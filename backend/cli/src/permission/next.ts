@@ -16,6 +16,7 @@ import { SessionTraceStore } from "@/session/trace-store"
 import { ProjectTrust } from "@/project/trust"
 import { ProjectAccess } from "@/project/access"
 import { ShellRisk } from "./shell-risk"
+import { AutoApprove } from "./auto-approve"
 
 export namespace PermissionNext {
   const log = Log.create({ service: "permission" })
@@ -118,8 +119,10 @@ export namespace PermissionNext {
     if (input.mode === "full" && input.permission === "environment_mutation") return "allow"
     if (level === "unknown") return "ask"
     if (input.mode === "ask" && level !== "passive") return "ask"
-    if (input.mode === "approve" && input.permission === "bash" && level === "risky") return "ask"
-    if (input.mode === "approve" && level === "risky") {
+    // Auto answers the same cards as Ask risky; the reviewer stands in for the user.
+    const approving = input.mode === "approve" || input.mode === "auto"
+    if (approving && input.permission === "bash" && level === "risky") return "ask"
+    if (approving && level === "risky") {
       return input.granted === "allow" ? "allow" : "ask"
     }
     if (input.configured === "ask" && input.granted === "allow") return "allow"
@@ -447,6 +450,23 @@ export namespace PermissionNext {
     signal?.throwIfAborted()
     if (evaluated.some((rule) => rule.action === "ask")) {
       const id = input.id ?? Identifier.ascending("permission")
+      if (mode === "auto" && AutoApprove.eligible(request.permission)) {
+        const outcome = await AutoApprove.review(
+          {
+            sessionID: request.sessionID,
+            permission: request.permission,
+            patterns: request.patterns ?? [],
+            metadata: request.metadata ?? {},
+          },
+          { requestID: id, signal },
+        )
+        signal?.throwIfAborted()
+        if (outcome.kind === "allow") {
+          await materialize(request, "once")
+          return
+        }
+        if (outcome.kind === "block") throw new AutoApprove.BlockedError(outcome.reason, request.permission)
+      }
       const info: Request = {
         id,
         ...request,
@@ -487,7 +507,7 @@ export namespace PermissionNext {
     for (const [id, pending] of Object.entries(s.pending)) {
       if (pending.mode === "ask") continue
       if (
-        pending.mode === "approve" &&
+        (pending.mode === "approve" || pending.mode === "auto") &&
         pending.info.permission === "bash" &&
         risk(pending.info.permission, pending.info.metadata) !== "contained"
       ) {

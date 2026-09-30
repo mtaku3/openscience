@@ -7,6 +7,7 @@ import { useLanguage } from "@/context/language"
 import type { Config } from "@synsci/sdk/v2/client"
 import { Section } from "./settings/_shared"
 import { commitPermissionDefault, permissionActionFor, type PermissionAction } from "./settings/permission-defaults"
+import { useProviders } from "@/hooks/use-providers"
 
 const ACTIONS = [
   { value: "allow", label: "settings.permissions.action.allow" },
@@ -165,6 +166,91 @@ export const PermissionToolDefaults: Component = () => {
                 label={(o) => o.label}
                 disabled={busy()}
                 onSelect={(option) => option && setPermission(item.id, option.value)}
+                variant="secondary"
+                size="small"
+                triggerVariant="settings"
+              />
+            </SettingsRow>
+          )}
+        </For>
+      </div>
+    </Section>
+  )
+}
+
+type AutoApproveConfig = NonNullable<Config["auto_approve"]>
+
+type JudgeOption = { value: string; label: string }
+
+// Judges for the Auto access mode. Written to the global config only: the
+// runtime reads auto_approve from trusted config, never from a project.
+export const AutoApproveJudges: Component = () => {
+  const globalSync = useGlobalSync()
+  const providers = useProviders()
+  const [busy, setBusy] = createSignal(false)
+
+  const current = createMemo((): AutoApproveConfig => globalSync.data.config.auto_approve ?? {})
+  const options = createMemo((): JudgeOption[] => [
+    { value: "", label: "Default" },
+    ...providers
+      .connected()
+      .flatMap((provider) =>
+        Object.entries(provider.models).map(([id, model]) => ({
+          value: `${provider.id}/${id}`,
+          label: `${provider.name} · ${model.name ?? id}`,
+        })),
+      )
+      .sort((a, b) => a.label.localeCompare(b.label)),
+  ])
+  const selected = (value: string | undefined) =>
+    options().find((option) => option.value === (value ?? "")) ?? { value: value ?? "", label: value || "Default" }
+
+  const setJudge = async (key: "judge" | "judge2", value: string) => {
+    if (busy()) return
+    const next: AutoApproveConfig = { ...current() }
+    if (value) next[key] = value
+    else delete next[key]
+    setBusy(true)
+    try {
+      await globalSync.updateConfig({ auto_approve: next })
+    } catch (error) {
+      showToast({ title: "Could not update the reviewer", description: String(error) })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const rows = [
+    {
+      key: "judge" as const,
+      title: "First-pass reviewer",
+      description: "Judges every action Auto would otherwise ask about. Fast and cheap. Default: the small model.",
+    },
+    {
+      key: "judge2" as const,
+      title: "Second-pass reviewer",
+      description:
+        "Re-examines only actions the first pass blocks. A capable model pays off here. Default: the first-pass reviewer.",
+    },
+  ]
+
+  return (
+    <Section
+      title="Auto approval reviewers"
+      description="Models that answer approval cards in the Auto access mode. Blocked actions return to the agent with a reason; reviewer errors fall back to asking you."
+    >
+      <div class="settings-card">
+        <For each={rows}>
+          {(row) => (
+            <SettingsRow icon="checklist" title={row.title} description={row.description}>
+              <Select
+                aria-label={row.title}
+                options={options()}
+                current={selected(current()[row.key])}
+                value={(o) => o.value}
+                label={(o) => o.label}
+                disabled={busy()}
+                onSelect={(option) => option && setJudge(row.key, option.value)}
                 variant="secondary"
                 size="small"
                 triggerVariant="settings"

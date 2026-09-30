@@ -9202,6 +9202,7 @@
                             "enum": [
                               "ask",
                               "approve",
+                              "auto",
                               "full"
                             ]
                           },
@@ -11848,6 +11849,7 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
                             "full"
                           ]
                         },
@@ -15667,6 +15669,7 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
                             "full"
                           ]
                         },
@@ -18342,6 +18345,7 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
                             "full"
                           ]
                         },
@@ -21017,6 +21021,7 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
                             "full"
                           ]
                         },
@@ -25972,6 +25977,7 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
                         "full"
                       ]
                     },
@@ -25980,6 +25986,7 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
                         "full"
                       ]
                     },
@@ -26145,6 +26152,7 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
                         "full"
                       ]
                     },
@@ -26153,6 +26161,7 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
                         "full"
                       ]
                     },
@@ -26282,6 +26291,7 @@
                     "enum": [
                       "ask",
                       "approve",
+                      "auto",
                       "full"
                     ]
                   },
@@ -26427,6 +26437,7 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
                         "full"
                       ]
                     },
@@ -43002,6 +43013,7 @@
                                     "enum": [
                                       "ask",
                                       "approve",
+                                      "auto",
                                       "full"
                                     ]
                                   },
@@ -43626,6 +43638,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -44262,6 +44275,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -44898,6 +44912,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -45678,6 +45693,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -46287,6 +46303,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -46929,6 +46946,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -47572,6 +47590,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -48425,6 +48444,7 @@
                                     "enum": [
                                       "ask",
                                       "approve",
+                                      "auto",
                                       "full"
                                     ]
                                   },
@@ -49049,6 +49069,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -49685,6 +49706,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -50321,6 +50343,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -51112,6 +51135,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -51721,6 +51745,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -52369,6 +52394,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -53018,6 +53044,7 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
                                 "full"
                               ]
                             },
@@ -58318,6 +58345,7 @@
                     "enum": [
                       "ask",
                       "approve",
+                      "auto",
                       "full"
                     ]
                   },
@@ -58326,6 +58354,7 @@
                     "enum": [
                       "ask",
                       "approve",
+                      "auto",
                       "full"
                     ]
                   },
@@ -58449,6 +58478,63 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ]
+      },
+      "Event.permission.auto_approve.decided": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "permission.auto_approve.decided"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              },
+              "permission": {
+                "type": "string"
+              },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "verdict": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "block",
+                  "escalate"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "stage": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "latencyMs": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "sessionID",
+              "permission",
+              "patterns",
+              "verdict",
+              "reason",
+              "latencyMs"
+            ]
           }
         },
         "required": [
@@ -60387,6 +60473,7 @@
                 "enum": [
                   "ask",
                   "approve",
+                  "auto",
                   "full"
                 ]
               },
@@ -60770,6 +60857,9 @@
           },
           {
             "$ref": "#/components/schemas/Event.vcs.branch.updated"
+          },
+          {
+            "$ref": "#/components/schemas/Event.permission.auto_approve.decided"
           },
           {
             "$ref": "#/components/schemas/Event.permission.asked"
@@ -62262,6 +62352,81 @@
           }
         }
       },
+      "AutoApproveConfig": {
+        "description": "LLM judges that answer approval requests in the Auto access mode instead of the user.",
+        "type": "object",
+        "properties": {
+          "judge": {
+            "description": "Stage-1 judge model (provider/model). Fast and cheap; it only needs recall. Default: small_model.",
+            "type": "string"
+          },
+          "judge2": {
+            "description": "Stage-2 judge model (provider/model) for calls stage 1 flags. Default: the stage-1 judge.",
+            "type": "string"
+          },
+          "two_stage": {
+            "description": "Re-examine stage-1 blocks with the stage-2 judge. Default: true.",
+            "type": "boolean"
+          },
+          "subagents": {
+            "description": "'ask' (default) never auto-approves subagent sessions, whose opening prompt is model-written; 'classify' judges them too.",
+            "type": "string",
+            "enum": [
+              "ask",
+              "classify"
+            ]
+          },
+          "escalate": {
+            "description": "Blocks within one user turn before escalating to a human prompt. Default: 3 consecutive, 20 total.",
+            "type": "object",
+            "properties": {
+              "consecutive": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              "total": {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            }
+          },
+          "user_messages": {
+            "description": "How many recent user messages the judge sees. Default: 6.",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "timeout_ms": {
+            "description": "Per-judge-call timeout; expiry falls back to a human prompt. Default: 45000.",
+            "type": "integer",
+            "exclusiveMinimum": 0,
+            "maximum": 9007199254740991
+          },
+          "hard_deny": {
+            "description": "Absolute boundaries the judge blocks even when the user names the operation.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "environment": {
+            "description": "Prose trust list: repositories, services, and sensitive-data locations beyond the project.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "rules": {
+            "description": "Extra soft rules; they block unless the user named the operation and its target.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "Config": {
         "type": "object",
         "properties": {
@@ -62692,6 +62857,9 @@
           },
           "sandbox": {
             "$ref": "#/components/schemas/SandboxConfig"
+          },
+          "auto_approve": {
+            "$ref": "#/components/schemas/AutoApproveConfig"
           },
           "tools": {
             "type": "object",

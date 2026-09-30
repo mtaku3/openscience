@@ -18,7 +18,7 @@ import { ProjectTrust } from "./trust"
  * project-owned while retaining the global/managed sandbox fields as policy.
  */
 export namespace ProjectAccess {
-  export const Mode = z.enum(["ask", "approve", "full"])
+  export const Mode = z.enum(["ask", "approve", "auto", "full"])
   export type Mode = z.infer<typeof Mode>
 
   const Record = z.object({
@@ -70,7 +70,7 @@ export namespace ProjectAccess {
     ),
   }
 
-  const rank: Record<Mode, number> = { ask: 0, approve: 1, full: 2 }
+  const rank: Record<Mode, number> = { ask: 0, approve: 1, auto: 2, full: 3 }
 
   function root(project: Project.Info) {
     return Project.canonicalize(project.worktree)

@@ -17,7 +17,7 @@ import { confirmDialog } from "@/atlas/dialogs"
 import { useGlobalSDK } from "@/context/global-sdk"
 import { useGlobalSync } from "@/context/global-sync"
 import { resolveProjectRoute } from "@/utils/project-route"
-import { PermissionToolDefaults } from "../settings-permissions"
+import { AutoApproveJudges, PermissionToolDefaults } from "../settings-permissions"
 import { PanelBody, PanelHeader, PanelScroll, Section, steady } from "./_shared"
 import { UsageLogging } from "./UsageLogging"
 import { useSettingsNav } from "./nav"
@@ -417,6 +417,8 @@ const Permissions: Component = () => {
               </div>
             </Section>
           </Show>
+
+          <AutoApproveJudges />
 
           {/* Tool defaults are a long list, so keep the most common controls visible first. */}
           <div

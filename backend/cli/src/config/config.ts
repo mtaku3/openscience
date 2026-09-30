@@ -870,6 +870,60 @@ export namespace Config {
     })
   export type Sandbox = z.infer<typeof Sandbox>
 
+  export const AutoApprove = z
+    .object({
+      judge: z
+        .string()
+        .optional()
+        .describe("Stage-1 judge model (provider/model). Fast and cheap; it only needs recall. Default: small_model."),
+      judge2: z
+        .string()
+        .optional()
+        .describe("Stage-2 judge model (provider/model) for calls stage 1 flags. Default: the stage-1 judge."),
+      two_stage: z.boolean().optional().describe("Re-examine stage-1 blocks with the stage-2 judge. Default: true."),
+      subagents: z
+        .enum(["ask", "classify"])
+        .optional()
+        .describe(
+          "'ask' (default) never auto-approves subagent sessions, whose opening prompt is model-written; 'classify' judges them too.",
+        ),
+      escalate: z
+        .object({
+          consecutive: z.number().int().positive().optional(),
+          total: z.number().int().positive().optional(),
+        })
+        .optional()
+        .describe("Blocks within one user turn before escalating to a human prompt. Default: 3 consecutive, 20 total."),
+      user_messages: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("How many recent user messages the judge sees. Default: 6."),
+      timeout_ms: z
+        .number()
+        .int()
+        .positive()
+        .optional()
+        .describe("Per-judge-call timeout; expiry falls back to a human prompt. Default: 45000."),
+      hard_deny: z
+        .array(z.string())
+        .optional()
+        .describe("Absolute boundaries the judge blocks even when the user names the operation."),
+      environment: z
+        .array(z.string())
+        .optional()
+        .describe("Prose trust list: repositories, services, and sensitive-data locations beyond the project."),
+      rules: z
+        .array(z.string())
+        .optional()
+        .describe("Extra soft rules; they block unless the user named the operation and its target."),
+    })
+    .meta({
+      ref: "AutoApproveConfig",
+    })
+  export type AutoApprove = z.infer<typeof AutoApprove>
+
   export const Command = z.object({
     template: z.string(),
     description: z.string().optional(),
@@ -1438,6 +1492,9 @@ export namespace Config {
       layout: Layout.optional().describe("@deprecated Always uses stretch layout."),
       permission: Permission.optional(),
       sandbox: Sandbox.optional().describe("OS-level execution sandbox for the agent's shell commands."),
+      auto_approve: AutoApprove.optional().describe(
+        "LLM judges that answer approval requests in the Auto access mode instead of the user.",
+      ),
       tools: z.record(z.string(), z.boolean()).optional(),
       enterprise: z
         .object({
@@ -2098,6 +2155,27 @@ export namespace Config {
 
   export async function trustedSandbox(): Promise<Sandbox> {
     return trustedSandboxPolicy().then((value) => value.config)
+  }
+
+  /** Auto-approve policy and its default judge, read only from sources the
+   *  person running OpenScience controls: global config, the operator's
+   *  OPENSCIENCE_CONFIG / OPENSCIENCE_CONFIG_CONTENT, and managed config. A
+   *  cloned project's config must not widen what the judge trusts or swap the
+   *  judge for a model of its choosing. */
+  export async function trustedAutoApprove(): Promise<{ config: AutoApprove; small_model?: string }> {
+    const layers: Info[] = [await global()]
+    if (Flag.OPENSCIENCE_CONFIG) layers.push(await loadFile(Flag.OPENSCIENCE_CONFIG))
+    if (Flag.OPENSCIENCE_CONFIG_CONTENT) layers.push(JSON.parse(Flag.OPENSCIENCE_CONFIG_CONTENT))
+    if (existsSync(managedConfigDir)) {
+      for (const file of CONFIG_FILES) layers.push(await loadFile(path.join(managedConfigDir, file)))
+    }
+    let config: AutoApprove = {}
+    let small_model: string | undefined
+    for (const layer of layers) {
+      if (layer.auto_approve) config = mergeDeep(config, layer.auto_approve) as AutoApprove
+      if (layer.small_model) small_model = layer.small_model
+    }
+    return { config, small_model }
   }
 
   /** Merge a patch into the GLOBAL `sandbox` config block, JSONC-preserving. The

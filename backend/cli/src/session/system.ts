@@ -333,7 +333,9 @@ export namespace SystemPrompt {
         ? "Ask for approval. Project actions require explicit approval."
         : projectAccess.mode === "approve"
           ? "Approve for me. Routine work in the project is automatically approved inside the sandbox; boundary actions still require approval."
-          : "Full access. Project actions may run with unrestricted host file and network access without approval prompts."
+          : projectAccess.mode === "auto"
+            ? "Auto. Routine work in the project is automatically approved inside the sandbox; an approval reviewer judges boundary actions against the user's requests and blocks unsafe or unrequested ones."
+            : "Full access. Project actions may run with unrestricted host file and network access without approval prompts."
     const projectName = project.name?.trim() || "Untitled project"
     return [
       [
