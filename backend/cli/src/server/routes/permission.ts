@@ -2,11 +2,38 @@ import { Hono } from "hono"
 import { describeRoute, validator, resolver } from "hono-openapi"
 import z from "zod"
 import { PermissionNext } from "@/permission/next"
+import { AutoApprove } from "@/permission/auto"
 import { errors } from "../error"
 import { lazy } from "@synsci/util/lazy"
 
 export const PermissionRoutes = lazy(() =>
   new Hono()
+    .post(
+      "/auto/probe",
+      describeRoute({
+        summary: "Check an Auto reviewer model",
+        description: "Ask a candidate reviewer model for one verdict before it is saved.",
+        operationId: "permission.auto.probe",
+        responses: {
+          200: {
+            description: "Whether the model answered with a verdict",
+            content: {
+              "application/json": {
+                schema: resolver(
+                  z.union([
+                    z.object({ ok: z.literal(true), durationMs: z.number() }),
+                    z.object({ ok: z.literal(false), error: z.string() }),
+                  ]),
+                ),
+              },
+            },
+          },
+          ...errors(400),
+        },
+      }),
+      validator("json", z.object({ model: z.string().min(3) })),
+      async (c) => c.json(await AutoApprove.probe(c.req.valid("json").model)),
+    )
     .post(
       "/:requestID/reply",
       describeRoute({

@@ -9202,6 +9202,8 @@
                             "enum": [
                               "ask",
                               "approve",
+                              "auto",
+                              "auto_host",
                               "full"
                             ]
                           },
@@ -11848,6 +11850,8 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
+                            "auto_host",
                             "full"
                           ]
                         },
@@ -15667,6 +15671,8 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
+                            "auto_host",
                             "full"
                           ]
                         },
@@ -18342,6 +18348,8 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
+                            "auto_host",
                             "full"
                           ]
                         },
@@ -21017,6 +21025,8 @@
                           "enum": [
                             "ask",
                             "approve",
+                            "auto",
+                            "auto_host",
                             "full"
                           ]
                         },
@@ -25972,6 +25982,8 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
+                        "auto_host",
                         "full"
                       ]
                     },
@@ -25980,6 +25992,8 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
+                        "auto_host",
                         "full"
                       ]
                     },
@@ -26058,6 +26072,17 @@
                         "available",
                         "backend"
                       ]
+                    },
+                    "autoApprove": {
+                      "type": "object",
+                      "properties": {
+                        "ready": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ready"
+                      ]
                     }
                   },
                   "required": [
@@ -26071,7 +26096,8 @@
                     "trusted",
                     "managed",
                     "sandbox",
-                    "sandboxStatus"
+                    "sandboxStatus",
+                    "autoApprove"
                   ]
                 }
               }
@@ -26145,6 +26171,8 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
+                        "auto_host",
                         "full"
                       ]
                     },
@@ -26153,6 +26181,8 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
+                        "auto_host",
                         "full"
                       ]
                     },
@@ -26231,6 +26261,17 @@
                         "available",
                         "backend"
                       ]
+                    },
+                    "autoApprove": {
+                      "type": "object",
+                      "properties": {
+                        "ready": {
+                          "type": "boolean"
+                        }
+                      },
+                      "required": [
+                        "ready"
+                      ]
                     }
                   },
                   "required": [
@@ -26244,7 +26285,8 @@
                     "trusted",
                     "managed",
                     "sandbox",
-                    "sandboxStatus"
+                    "sandboxStatus",
+                    "autoApprove"
                   ]
                 }
               }
@@ -26282,6 +26324,8 @@
                     "enum": [
                       "ask",
                       "approve",
+                      "auto",
+                      "auto_host",
                       "full"
                     ]
                   },
@@ -26427,6 +26471,8 @@
                       "enum": [
                         "ask",
                         "approve",
+                        "auto",
+                        "auto_host",
                         "full"
                       ]
                     },
@@ -33651,6 +33697,101 @@
           {
             "lang": "js",
             "source": "import { createOpenScienceClient } from \"@synsci/sdk\"\n\nconst client = createOpenScienceClient()\nawait client.search.query({\n  ...\n})"
+          }
+        ]
+      }
+    },
+    "/permission/auto/probe": {
+      "post": {
+        "operationId": "permission.auto.probe",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "directory",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "summary": "Check an Auto reviewer model",
+        "description": "Ask a candidate reviewer model for one verdict before it is saved.",
+        "responses": {
+          "200": {
+            "description": "Whether the model answered with a verdict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "const": true
+                        },
+                        "durationMs": {
+                          "type": "number"
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "durationMs"
+                      ]
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "ok": {
+                          "type": "boolean",
+                          "const": false
+                        },
+                        "error": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "ok",
+                        "error"
+                      ]
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BadRequestError"
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "model": {
+                    "type": "string",
+                    "minLength": 3
+                  }
+                },
+                "required": [
+                  "model"
+                ]
+              }
+            }
+          }
+        },
+        "x-codeSamples": [
+          {
+            "lang": "js",
+            "source": "import { createOpenScienceClient } from \"@synsci/sdk\"\n\nconst client = createOpenScienceClient()\nawait client.permission.auto.probe({\n  ...\n})"
           }
         ]
       }
@@ -43002,6 +43143,8 @@
                                     "enum": [
                                       "ask",
                                       "approve",
+                                      "auto",
+                                      "auto_host",
                                       "full"
                                     ]
                                   },
@@ -43626,6 +43769,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -44262,6 +44407,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -44898,6 +45045,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -45678,6 +45827,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -46287,6 +46438,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -46929,6 +47082,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -47572,6 +47727,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -48425,6 +48582,8 @@
                                     "enum": [
                                       "ask",
                                       "approve",
+                                      "auto",
+                                      "auto_host",
                                       "full"
                                     ]
                                   },
@@ -49049,6 +49208,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -49685,6 +49846,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -50321,6 +50484,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -51112,6 +51277,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -51721,6 +51888,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -52369,6 +52538,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -53018,6 +53189,8 @@
                               "enum": [
                                 "ask",
                                 "approve",
+                                "auto",
+                                "auto_host",
                                 "full"
                               ]
                             },
@@ -58318,6 +58491,8 @@
                     "enum": [
                       "ask",
                       "approve",
+                      "auto",
+                      "auto_host",
                       "full"
                     ]
                   },
@@ -58326,6 +58501,8 @@
                     "enum": [
                       "ask",
                       "approve",
+                      "auto",
+                      "auto_host",
                       "full"
                     ]
                   },
@@ -58404,6 +58581,17 @@
                       "available",
                       "backend"
                     ]
+                  },
+                  "autoApprove": {
+                    "type": "object",
+                    "properties": {
+                      "ready": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "ready"
+                    ]
                   }
                 },
                 "required": [
@@ -58417,7 +58605,8 @@
                   "trusted",
                   "managed",
                   "sandbox",
-                  "sandboxStatus"
+                  "sandboxStatus",
+                  "autoApprove"
                 ]
               },
               "narrowing": {
@@ -58449,6 +58638,60 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "required": [
+          "type",
+          "properties"
+        ]
+      },
+      "Event.permission.auto.decided": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "const": "permission.auto.decided"
+          },
+          "properties": {
+            "type": "object",
+            "properties": {
+              "sessionID": {
+                "type": "string"
+              },
+              "permission": {
+                "type": "string"
+              },
+              "patterns": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "verdict": {
+                "type": "string",
+                "enum": [
+                  "allow",
+                  "block",
+                  "manual"
+                ]
+              },
+              "reason": {
+                "type": "string"
+              },
+              "error": {
+                "type": "string"
+              },
+              "durationMs": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "sessionID",
+              "permission",
+              "patterns",
+              "verdict",
+              "reason"
+            ]
           }
         },
         "required": [
@@ -60387,6 +60630,8 @@
                 "enum": [
                   "ask",
                   "approve",
+                  "auto",
+                  "auto_host",
                   "full"
                 ]
               },
@@ -60770,6 +61015,9 @@
           },
           {
             "$ref": "#/components/schemas/Event.vcs.branch.updated"
+          },
+          {
+            "$ref": "#/components/schemas/Event.permission.auto.decided"
           },
           {
             "$ref": "#/components/schemas/Event.permission.asked"
@@ -62262,6 +62510,47 @@
           }
         }
       },
+      "AutoApproveConfig": {
+        "description": "Reviewer that answers approval requests in the Auto access mode instead of the user.",
+        "type": "object",
+        "properties": {
+          "model": {
+            "description": "Reviewer model (provider/model) that answers approval cards in Auto. Auto is unavailable until set.",
+            "type": "string"
+          },
+          "hints": {
+            "description": "Extra ALLOW / SOFT BLOCK / HARD BLOCK entries appended to the reviewer's built-in policy.",
+            "type": "object",
+            "properties": {
+              "allow": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "soft_deny": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "hard_deny": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "environment": {
+            "description": "Extra environment context for the reviewer: trusted repositories, services, and data locations.",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "Config": {
         "type": "object",
         "properties": {
@@ -62692,6 +62981,9 @@
           },
           "sandbox": {
             "$ref": "#/components/schemas/SandboxConfig"
+          },
+          "auto_approve": {
+            "$ref": "#/components/schemas/AutoApproveConfig"
           },
           "tools": {
             "type": "object",

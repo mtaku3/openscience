@@ -211,8 +211,7 @@ export default function Models() {
   const [notice, setNotice] = createSignal("Pinned models appear first. Hidden models stay out of the picker.")
   const pinnedCount = createMemo(() => options().filter((model) => model.pinned).length)
   const visibleCount = createMemo(() => options().filter((model) => model.visible).length)
-  const workerOptions = createMemo<WorkerOption[]>(() => {
-    const selected = preferences()?.delegation_worker_model ?? undefined
+  const modelChoices = (selected: DelegationModel | undefined): WorkerOption[] => {
     const currentBilling = billing.latest?.llm ?? sync.data.config.billing?.llm
     const routes = options()
       .filter(
@@ -254,8 +253,61 @@ export default function Models() {
             model: selected,
           } satisfies WorkerOption)
         : undefined
-    return [{ value: "inherit", label: "Same as conversation" }, ...(saved ? [saved] : []), ...routes]
+    return [...(saved ? [saved] : []), ...routes]
+  }
+  const workerOptions = createMemo<WorkerOption[]>(() => [
+    { value: "inherit", label: "Same as conversation" },
+    ...modelChoices(preferences()?.delegation_worker_model ?? undefined),
+  ])
+  const reviewerModel = createMemo((): DelegationModel | undefined => {
+    const value = sync.data.config.auto_approve?.model
+    if (!value || !value.includes("/")) return undefined
+    const [providerID, ...rest] = value.split("/")
+    return { providerID: providerID!, modelID: rest.join("/") }
   })
+  const reviewerOptions = createMemo<WorkerOption[]>(() => [
+    { value: "none", label: "Not set" },
+    ...modelChoices(reviewerModel()),
+  ])
+  const reviewerSelection = createMemo(() => {
+    const selected = reviewerModel()
+    if (!selected) return reviewerOptions()[0]
+    return reviewerOptions().find(
+      (option) => option.model?.providerID === selected.providerID && option.model.modelID === selected.modelID,
+    )
+  })
+  const [reviewerStatus, setReviewerStatus] = createSignal<{ tone: "checking" | "ok" | "error"; text: string }>()
+  const setReviewer = async (option: WorkerOption) => {
+    if (reviewerStatus()?.tone === "checking") return
+    if (sameDelegationModel(reviewerModel() ?? null, option.model ?? null)) return
+    const model = option.model ? `${option.model.providerID}/${option.model.modelID}` : ""
+    if (model) {
+      setReviewerStatus({ tone: "checking", text: `Checking ${option.label}…` })
+      const result = await settingsApi<{ ok: true; durationMs: number } | { ok: false; error: string }>(
+        sdk.url,
+        fetchFn,
+        "/permission/auto/probe",
+        { method: "POST", body: JSON.stringify({ model }) },
+      ).catch((cause) => ({ ok: false as const, error: cause instanceof Error ? cause.message : String(cause) }))
+      if (!result.ok) {
+        setReviewerStatus({ tone: "error", text: `${option.label} could not review: ${result.error}` })
+        return
+      }
+      setReviewerStatus({ tone: "ok", text: `${option.label} answered in ${(result.durationMs / 1000).toFixed(1)}s` })
+    } else {
+      setReviewerStatus(undefined)
+    }
+    // Config patches deep-merge on the server; an empty string clears the reviewer.
+    const previous = sync.data.config.auto_approve ?? {}
+    const next = { ...previous, model }
+    sync.set("config", "auto_approve", next)
+    try {
+      await sync.updateConfig({ auto_approve: next })
+    } catch (cause) {
+      sync.set("config", "auto_approve", previous)
+      setReviewerStatus({ tone: "error", text: cause instanceof Error ? cause.message : String(cause) })
+    }
+  }
   const workerSelection = createMemo(() => {
     const selected = preferences()?.delegation_worker_model ?? undefined
     if (!selected) return workerOptions()[0]
@@ -344,6 +396,44 @@ export default function Models() {
                     label={(option) => option.label}
                     disabled={!preferences()}
                     onSelect={(option) => option && void setWorkerModel(option)}
+                    variant="secondary"
+                    size="small"
+                    triggerVariant="settings"
+                  >
+                    {(option) => (
+                      <Show when={option}>
+                        {(entry) => (
+                          <span class="models-default-option">
+                            <span class="min-w-0 truncate">{entry().label}</span>
+                            <Show when={entry().provider}>
+                              {(provider) => (
+                                <span class="shrink-0 text-12-regular text-text-weak">· {provider()}</span>
+                              )}
+                            </Show>
+                          </span>
+                        )}
+                      </Show>
+                    )}
+                  </Select>
+                </div>
+              </div>
+              <div class="settings-row models-preference-row">
+                <RowCopy
+                  title="Auto reviewer"
+                  description={
+                    reviewerStatus()?.text ??
+                    "Answers approval cards when access is Auto. Auto stays off until one is chosen."
+                  }
+                />
+                <div class="models-worker-control" data-tone={reviewerStatus()?.tone}>
+                  <Select
+                    aria-label="Auto reviewer"
+                    options={reviewerOptions()}
+                    current={reviewerSelection()}
+                    value={(option) => option.value}
+                    label={(option) => option.label}
+                    disabled={reviewerStatus()?.tone === "checking"}
+                    onSelect={(option) => option && void setReviewer(option)}
                     variant="secondary"
                     size="small"
                     triggerVariant="settings"

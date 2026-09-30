@@ -205,6 +205,8 @@ import type {
   PartUpdateErrors,
   PartUpdateResponses,
   PathGetResponses,
+  PermissionAutoProbeErrors,
+  PermissionAutoProbeResponses,
   PermissionListResponses,
   PermissionReplyErrors,
   PermissionReplyResponses,
@@ -2903,7 +2905,7 @@ export class Access extends HeyApiClient {
     parameters: {
       projectID: string
       directory?: string
-      mode: "ask" | "approve" | "full"
+      mode: "ask" | "approve" | "auto" | "auto_host" | "full"
       root?: string
     },
     options?: Options<never, ThrowOnError>,
@@ -4689,6 +4691,45 @@ export class Part extends HeyApiClient {
   }
 }
 
+export class Auto extends HeyApiClient {
+  /**
+   * Check an Auto reviewer model
+   *
+   * Ask a candidate reviewer model for one verdict before it is saved.
+   */
+  public probe<ThrowOnError extends boolean = false>(
+    parameters: {
+      directory?: string
+      model: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "query", key: "directory" },
+            { in: "body", key: "model" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<PermissionAutoProbeResponses, PermissionAutoProbeErrors, ThrowOnError>(
+      {
+        url: "/permission/auto/probe",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
+  }
+}
+
 export class Standing extends HeyApiClient {
   /**
    * List standing approvals
@@ -4838,6 +4879,11 @@ export class Permission extends HeyApiClient {
       ...options,
       ...params,
     })
+  }
+
+  private _auto?: Auto
+  get auto(): Auto {
+    return (this._auto ??= new Auto({ client: this.client }))
   }
 
   private _standing?: Standing

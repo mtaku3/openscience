@@ -172,7 +172,16 @@ type Labels = {
 }
 
 /** The words of one request, from the metadata the tool attached to it. */
+/** A card the Auto reviewer handed back says why, where it is always visible. */
 export function describeRequest(metadata: Metadata, labels: Labels): RequestModel {
+  const model = describeRequestKind(metadata, labels)
+  const auto = (metadata as { auto?: { reason?: unknown } } | undefined)?.auto
+  if (!auto || typeof auto.reason !== "string" || !auto.reason) return model
+  const note = `Auto handed this back: ${auto.reason}`
+  return { ...model, subline: model.subline ? `${note} · ${model.subline}` : note }
+}
+
+function describeRequestKind(metadata: Metadata, labels: Labels): RequestModel {
   const compute = metadata?.compute
   const study = metadata?.study?.id && metadata?.study?.target ? metadata.study : undefined
   const mutation = metadata?.environment_mutation

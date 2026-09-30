@@ -10,6 +10,7 @@ describe("research access modes", () => {
   test("uses the backend's atomic project-scoped mode", () => {
     expect(researchAccessMode({ mode: "ask" })).toBe("ask")
     expect(researchAccessMode({ mode: "approve" })).toBe("approve")
+    expect(researchAccessMode({ mode: "auto" })).toBe("auto")
     expect(researchAccessMode({ mode: "full" })).toBe("full")
   })
 
@@ -17,6 +18,8 @@ describe("research access modes", () => {
     expect(DEFAULT_RESEARCH_ACCESS_MODE).toBe("approve")
     expect(researchAccessLabel("ask")).toBe("Ask always")
     expect(researchAccessLabel("approve")).toBe("Ask risky")
+    expect(researchAccessLabel("auto")).toBe("Auto")
+    expect(researchAccessLabel("auto_host")).toBe("Auto · no sandbox")
     expect(researchAccessLabel("full")).toBe("Full access")
     expect(researchAccessLabel("unexpected")).toBe("Restricted access")
   })
@@ -35,6 +38,11 @@ describe("research access modes", () => {
     expect(researchAccessContract("approve")).toEqual({
       sandbox: "workspace-write",
       approval: "risky actions",
+      boundary: "contained work proceeds",
+    })
+    expect(researchAccessContract("auto")).toEqual({
+      sandbox: "workspace-write",
+      approval: "reviewer model",
       boundary: "contained work proceeds",
     })
     expect(researchAccessContract("full")).toEqual({

@@ -870,6 +870,32 @@ export namespace Config {
     })
   export type Sandbox = z.infer<typeof Sandbox>
 
+  export const AutoApprove = z
+    .object({
+      model: z
+        .string()
+        .optional()
+        .describe(
+          "Reviewer model (provider/model) that answers approval cards in Auto. Auto is unavailable until set.",
+        ),
+      hints: z
+        .object({
+          allow: z.array(z.string()).optional(),
+          soft_deny: z.array(z.string()).optional(),
+          hard_deny: z.array(z.string()).optional(),
+        })
+        .optional()
+        .describe("Extra ALLOW / SOFT BLOCK / HARD BLOCK entries appended to the reviewer's built-in policy."),
+      environment: z
+        .array(z.string())
+        .optional()
+        .describe("Extra environment context for the reviewer: trusted repositories, services, and data locations."),
+    })
+    .meta({
+      ref: "AutoApproveConfig",
+    })
+  export type AutoApprove = z.infer<typeof AutoApprove>
+
   export const Command = z.object({
     template: z.string(),
     description: z.string().optional(),
@@ -1438,6 +1464,9 @@ export namespace Config {
       layout: Layout.optional().describe("@deprecated Always uses stretch layout."),
       permission: Permission.optional(),
       sandbox: Sandbox.optional().describe("OS-level execution sandbox for the agent's shell commands."),
+      auto_approve: AutoApprove.optional().describe(
+        "Reviewer that answers approval requests in the Auto access mode instead of the user.",
+      ),
       tools: z.record(z.string(), z.boolean()).optional(),
       enterprise: z
         .object({
@@ -2098,6 +2127,30 @@ export namespace Config {
 
   export async function trustedSandbox(): Promise<Sandbox> {
     return trustedSandboxPolicy().then((value) => value.config)
+  }
+
+  /** Auto-approve policy and its reviewer model, read only from sources the
+   *  person running OpenScience controls: global config, the operator's
+   *  OPENSCIENCE_CONFIG / OPENSCIENCE_CONFIG_CONTENT, and managed config. A
+   *  cloned project's config must not widen what the reviewer trusts or swap
+   *  the reviewer for a model of its choosing. */
+  export async function trustedAutoApprove(): Promise<AutoApprove> {
+    const layers: Info[] = [await global()]
+    if (Flag.OPENSCIENCE_CONFIG) layers.push(await loadFile(Flag.OPENSCIENCE_CONFIG))
+    if (Flag.OPENSCIENCE_CONFIG_CONTENT) layers.push(JSON.parse(Flag.OPENSCIENCE_CONFIG_CONTENT))
+    if (existsSync(managedConfigDir)) {
+      for (const file of CONFIG_FILES) layers.push(await loadFile(path.join(managedConfigDir, file)))
+    }
+    let config: AutoApprove = {}
+    for (const layer of layers) {
+      if (layer.auto_approve) config = mergeDeep(config, layer.auto_approve) as AutoApprove
+    }
+    return config
+  }
+
+  /** Auto has no default reviewer: it is available only once one is chosen. */
+  export function autoApproveReady(config: AutoApprove) {
+    return Boolean(config.model)
   }
 
   /** Merge a patch into the GLOBAL `sandbox` config block, JSONC-preserving. The

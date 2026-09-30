@@ -7,6 +7,17 @@ Licensed under the Apache License, Version 2.0.
 It bundles or accesses the following third-party software and services.
 
 --------------------------------------------------------------------------------
+Qwen Code
+https://github.com/QwenLM/qwen-code
+
+The Auto access mode's reviewer (backend/cli/src/permission/auto/) adapts Qwen
+Code's Auto Mode classifier policy, transcript projection, two-stage
+classifier, and denial tracking.
+
+Copyright 2025 Qwen Team
+Licensed under the Apache License, Version 2.0.
+
+--------------------------------------------------------------------------------
 OpenCode
 https://github.com/anomalyco/opencode · https://opencode.ai
 

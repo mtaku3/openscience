@@ -2,6 +2,7 @@ import crypto from "node:crypto"
 import z from "zod"
 import { Bus } from "@/bus"
 import { BusEvent } from "@/bus/bus-event"
+import { NamedError } from "@synsci/util/error"
 import { Config } from "@/config/config"
 import { Sandbox } from "@/sandbox/sandbox"
 import { Storage } from "@/storage/storage"
@@ -18,7 +19,7 @@ import { ProjectTrust } from "./trust"
  * project-owned while retaining the global/managed sandbox fields as policy.
  */
 export namespace ProjectAccess {
-  export const Mode = z.enum(["ask", "approve", "full"])
+  export const Mode = z.enum(["ask", "approve", "auto", "auto_host", "full"])
   export type Mode = z.infer<typeof Mode>
 
   const Record = z.object({
@@ -51,8 +52,14 @@ export namespace ProjectAccess {
       backend: z.enum(["seatbelt", "bubblewrap", "none"]),
       reason: z.string().optional(),
     }),
+    autoApprove: z.object({ ready: z.boolean() }),
   })
   export type Status = z.infer<typeof Status>
+
+  export const AutoUnavailableError = NamedError.create(
+    "ProjectAccessAutoUnavailableError",
+    z.object({ projectID: z.string(), message: z.string() }),
+  )
 
   export const Update = z.object({
     mode: Mode,
@@ -70,7 +77,7 @@ export namespace ProjectAccess {
     ),
   }
 
-  const rank: Record<Mode, number> = { ask: 0, approve: 1, full: 2 }
+  const rank: Record<Mode, number> = { ask: 0, approve: 1, auto: 2, auto_host: 3, full: 4 }
 
   function root(project: Project.Info) {
     return Project.canonicalize(project.worktree)
@@ -97,14 +104,25 @@ export namespace ProjectAccess {
       ProjectTrust.status(project),
       Config.trustedSandboxPolicy(),
     ])
+    const autoReady = Config.autoApproveReady(await Config.trustedAutoApprove())
     const canonical = root(project)
     const legacy = !trust.canExecuteProjectCode ? "ask" : sandboxPolicy.config.enabled === false ? "full" : "approve"
     const requestedMode = saved?.root === canonical ? saved.mode : legacy
-    const managed = requestedMode === "full" && sandboxPolicy.managed.enabled === true
-    const mode = !trust.canExecuteProjectCode ? "ask" : managed ? "approve" : requestedMode
+    const unsandboxed = requestedMode === "full" || requestedMode === "auto_host"
+    const managed = unsandboxed && sandboxPolicy.managed.enabled === true
+    const auto = requestedMode === "auto" || requestedMode === "auto_host"
+    const mode: Mode = !trust.canExecuteProjectCode
+      ? "ask"
+      : auto && !autoReady
+        ? "approve"
+        : managed
+          ? requestedMode === "auto_host"
+            ? "auto"
+            : "approve"
+          : requestedMode
     const sandbox = {
       ...sandboxPolicy.config,
-      enabled: mode !== "full",
+      enabled: mode !== "full" && mode !== "auto_host",
       network: sandboxPolicy.config.network ?? "deny",
       allowWrite: sandboxPolicy.config.allowWrite ?? [],
       onUnavailable: sandboxPolicy.config.onUnavailable ?? "error",
@@ -127,11 +145,20 @@ export namespace ProjectAccess {
         backend: backend.backend,
         reason: backend.reason,
       },
+      autoApprove: { ready: autoReady },
     }
   }
 
   export async function update(project: Project.Info, input: Update): Promise<Status> {
     const parsed = Update.parse(input)
+    if (
+      (parsed.mode === "auto" || parsed.mode === "auto_host") &&
+      !Config.autoApproveReady(await Config.trustedAutoApprove())
+    )
+      throw new AutoUnavailableError({
+        projectID: project.id,
+        message: "Choose the Auto reviewer in Settings > Models before switching to Auto.",
+      })
     const canonical = root(project)
     const previous = await status(project)
 

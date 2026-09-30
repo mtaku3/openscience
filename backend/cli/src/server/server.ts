@@ -170,6 +170,7 @@ export namespace Server {
             else if (err.name === "ProjectDirectoryError") status = 400
             else if (err.name === "ProjectTrustDeniedError") status = 403
             else if (err.name === "ProjectTrustRootMismatchError") status = 409
+            else if (err.name === "ProjectAccessAutoUnavailableError") status = 409
             else if (err.name === "ExecutionAuthorityDeniedError") status = 403
             else if (err.name.startsWith("Worktree")) status = 400
             else status = 500

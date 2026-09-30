@@ -140,6 +140,7 @@ interface ResearchAccessSnapshot {
   requestedMode: ResearchAccessMode
   managed: boolean
   sandboxStatus: { available: boolean; reason?: string }
+  autoApprove?: { ready: boolean }
 }
 
 type ResearchSliderOption = { value: string; label: string }
@@ -314,6 +315,17 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
     return current ? researchAccessMode(current) : DEFAULT_RESEARCH_ACCESS_MODE
   })
   const researchAccessLabel = createMemo(() => accessLabel(selectedResearchAccess()))
+  const autoUnavailable = () => currentResearchAccess()?.autoApprove?.ready === false
+  // Choosing the Auto reviewer in Settings changes whether Auto is available.
+  createEffect(
+    on(
+      () => globalSync.data.config.auto_approve,
+      () => {
+        if (sdk.projectID && !researchAccessSaving()) void researchAccessControls.refetch()
+      },
+      { defer: true },
+    ),
+  )
 
   const applyResearchAccess = async (mode: ResearchAccessMode, target: HTMLButtonElement) => {
     target.focus()
@@ -327,6 +339,16 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
         message:
           "Full access disables the execution sandbox and routine action prompts, including package installs. Paid compute still asks once: approve a Modal job for the session or project and its time allowance covers the jobs that follow, until it is spent.",
         confirmLabel: "Enable Full access",
+        danger: true,
+      })
+      if (!confirmed) return
+    }
+    if (mode === "auto_host") {
+      const confirmed = await confirmDialog(dialog, {
+        title: "Enable Auto without sandbox?",
+        message:
+          "Commands run on this machine with your full user authority. Reads and project edits proceed; the reviewer model judges every other command, kernel run, and access outside the project, and hands anything it cannot judge back to you.",
+        confirmLabel: "Enable Auto without sandbox",
         danger: true,
       })
       if (!confirmed) return
@@ -3161,10 +3183,16 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                                   type="button"
                                   role="radio"
                                   data-research-access={option.value}
-                                  data-tone={option.value === "full" ? "warning" : undefined}
+                                  data-tone={
+                                    option.value === "full" || option.value === "auto_host" ? "warning" : undefined
+                                  }
                                   aria-checked={selectedResearchAccess() === option.value}
                                   tabindex={selectedResearchAccess() === option.value ? 0 : -1}
-                                  disabled={researchAccess.loading || researchAccessSaving()}
+                                  disabled={
+                                    researchAccess.loading ||
+                                    researchAccessSaving() ||
+                                    ((option.value === "auto" || option.value === "auto_host") && autoUnavailable())
+                                  }
                                   onClick={(event) => {
                                     void applyResearchAccess(option.value, event.currentTarget)
                                     event.currentTarget.closest("details")?.removeAttribute("open")
@@ -3173,10 +3201,13 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                                   <span>
                                     <strong>{option.label}</strong>
                                     <small>
-                                      {option.value !== "full" &&
-                                      currentResearchAccess()?.sandboxStatus.available === false
-                                        ? `Fail-closed until setup: ${currentResearchAccess()?.sandboxStatus.reason ?? "sandbox backend not installed"}`
-                                        : option.description}
+                                      {(option.value === "auto" || option.value === "auto_host") && autoUnavailable()
+                                        ? "Choose the Auto reviewer in Settings > Models to enable Auto"
+                                        : option.value !== "full" &&
+                                            option.value !== "auto_host" &&
+                                            currentResearchAccess()?.sandboxStatus.available === false
+                                          ? `Fail-closed until setup: ${currentResearchAccess()?.sandboxStatus.reason ?? "sandbox backend not installed"}`
+                                          : option.description}
                                     </small>
                                   </span>
                                   <Show when={selectedResearchAccess() === option.value}>

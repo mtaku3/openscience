@@ -116,7 +116,7 @@ export namespace Agent {
             webfetch: "ask",
             websearch: "ask",
           }
-        : accessMode === "approve"
+        : accessMode === "approve" || accessMode === "auto" || accessMode === "auto_host"
           ? {
               atlas: "ask",
               bash: "allow",

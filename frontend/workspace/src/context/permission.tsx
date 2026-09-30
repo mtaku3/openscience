@@ -11,6 +11,7 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useSettings } from "@/context/settings"
 import { playSound, preloadSound, soundSrc } from "@/utils/sound"
+import { showToast } from "@synsci/ui/toast"
 import { projectForDirectory, projectHref, projectScope, resolveProjectRoute } from "@/utils/project-route"
 
 type PermissionRespondFn = (input: {
@@ -165,6 +166,24 @@ export const { provider: PermissionProvider } = createSimpleContext({
       }
     })
     onCleanup(unsubscribe)
+
+    const unsubscribeAuto = globalSDK.event.listen((e) => {
+      const event = e.details
+      if (event?.type !== "permission.auto.decided") return
+      const decision = event.properties
+      if (decision.verdict === "block") {
+        showToast({ title: "Auto blocked an action", description: decision.reason })
+        return
+      }
+      if (decision.verdict === "manual" && decision.error) {
+        showToast({
+          variant: "error",
+          title: "Auto couldn't review an action",
+          description: `${decision.reason} ${decision.error}`.trim(),
+        })
+      }
+    })
+    onCleanup(unsubscribeAuto)
 
     function enable(sessionID: string, directory: string) {
       const key = acceptKey(sessionID, directory)

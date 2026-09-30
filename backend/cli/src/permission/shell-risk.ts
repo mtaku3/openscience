@@ -561,6 +561,28 @@ export namespace ShellRisk {
     return risky(`unknown command: ${command}`)
   }
 
+  const READ_ONLY_REASON = /^(read-only |shell-local |executable lookup|archive listing)/
+
+  /** Every simple command is an audited read; tests and builds do not count. */
+  export function readOnly(source: string): boolean {
+    const parsed = lex(source.trim())
+    if (!Array.isArray(parsed)) return false
+    const read = (words: string[]) => {
+      const result = simple(words)
+      return result.level === "contained" && READ_ONLY_REASON.test(result.reason)
+    }
+    let words: string[] = []
+    for (const token of parsed) {
+      if (token.kind === "word") {
+        words.push(token.value)
+        continue
+      }
+      if (!read(words)) return false
+      words = []
+    }
+    return read(words)
+  }
+
   export function classify(source: string): Result {
     const parsed = lex(source.trim())
     if (!Array.isArray(parsed)) return parsed

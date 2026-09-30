@@ -16,6 +16,7 @@ import { SessionTraceStore } from "@/session/trace-store"
 import { ProjectTrust } from "@/project/trust"
 import { ProjectAccess } from "@/project/access"
 import { ShellRisk } from "./shell-risk"
+import { AutoApprove } from "./auto"
 
 export namespace PermissionNext {
   const log = Log.create({ service: "permission" })
@@ -116,10 +117,17 @@ export namespace PermissionNext {
     // card; the same change through the kernel asking on every plan was a
     // prompt, not a boundary. Paid compute and hosted requests keep theirs.
     if (input.mode === "full" && input.permission === "environment_mutation") return "allow"
+    // Without a sandbox only audited reads skip the reviewer; tests and builds run host code.
+    if (input.mode === "auto_host" && input.permission === "bash") {
+      const parsed = ShellMetadata.safeParse(input.metadata)
+      return parsed.success && ShellRisk.readOnly(parsed.data.shell.command) ? "allow" : "ask"
+    }
     if (level === "unknown") return "ask"
     if (input.mode === "ask" && level !== "passive") return "ask"
-    if (input.mode === "approve" && input.permission === "bash" && level === "risky") return "ask"
-    if (input.mode === "approve" && level === "risky") {
+    // Auto answers the same cards as Ask risky; the reviewer stands in for the user.
+    const approving = input.mode === "approve" || input.mode === "auto" || input.mode === "auto_host"
+    if (approving && input.permission === "bash" && level === "risky") return "ask"
+    if (approving && level === "risky") {
       return input.granted === "allow" ? "allow" : "ask"
     }
     if (input.configured === "ask" && input.granted === "allow") return "allow"
@@ -447,9 +455,30 @@ export namespace PermissionNext {
     signal?.throwIfAborted()
     if (evaluated.some((rule) => rule.action === "ask")) {
       const id = input.id ?? Identifier.ascending("permission")
+      let auto: { reason: string; error?: string } | undefined
+      if (mode === "auto" || mode === "auto_host") {
+        const outcome = await AutoApprove.review(
+          {
+            sessionID: request.sessionID,
+            permission: request.permission,
+            patterns: request.patterns ?? [],
+            metadata: request.metadata ?? {},
+            tool: request.tool,
+          },
+          { requestID: id, signal, sandboxed: mode === "auto" },
+        )
+        signal?.throwIfAborted()
+        if (outcome.kind === "allow") {
+          await materialize(request, "once")
+          return
+        }
+        if (outcome.kind === "block") throw new AutoApprove.BlockedError(outcome.reason)
+        auto = { reason: outcome.reason, ...(outcome.error ? { error: outcome.error } : {}) }
+      }
       const info: Request = {
         id,
         ...request,
+        ...(auto ? { metadata: { ...request.metadata, auto } } : {}),
       }
       const trace = SessionTraceStore.approvalAsked(info)
       return new Promise<void>((resolve, reject) => {
@@ -487,7 +516,7 @@ export namespace PermissionNext {
     for (const [id, pending] of Object.entries(s.pending)) {
       if (pending.mode === "ask") continue
       if (
-        pending.mode === "approve" &&
+        (pending.mode === "approve" || pending.mode === "auto" || pending.mode === "auto_host") &&
         pending.info.permission === "bash" &&
         risk(pending.info.permission, pending.info.metadata) !== "contained"
       ) {
@@ -619,6 +648,11 @@ export namespace PermissionNext {
           }
         }
         return true
+      }
+      if (existing.info.metadata?.auto) {
+        await AutoApprove.manualApproved(existing.info.sessionID).catch((error) =>
+          log.warn("failed to reset auto denial state", { error: String(error) }),
+        )
       }
       if (input.reply === "once") {
         await materialize(existing.info, "once").catch((error) => {
