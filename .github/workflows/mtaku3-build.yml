@@ -1,0 +1,66 @@
+name: mtaku3 build
+
+on:
+  push:
+    branches:
+      - mtaku3
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version
+        id: version
+        run: |
+          git fetch --no-tags https://github.com/synthetic-sciences/openscience.git 'refs/tags/v*:refs/tags/v*'
+          upstream=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-mtaku3-*' HEAD)
+          sha=$(git rev-parse --short=8 HEAD)
+          {
+            echo "upstream=$upstream"
+            echo "version=${upstream#v}-mtaku3.$sha"
+            echo "tag=$upstream-mtaku3-$sha"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: package.json
+
+      - name: Install
+        run: bun install --frozen-lockfile
+
+      - name: Test
+        working-directory: backend/cli
+        run: bun test --timeout 15000 test/permission/auto-approve.test.ts test/permission/next.test.ts
+
+      - name: Build
+        env:
+          OPENSCIENCE_VERSION: ${{ steps.version.outputs.version }}
+          OPENSCIENCE_CHANNEL: latest
+        run: bun run --cwd backend/cli build --target linux-x64 --skip-install
+
+      - name: Package
+        run: |
+          tar -C backend/cli/dist/@synsci/openscience-linux-x64/bin -czf openscience-linux-x64.tar.gz openscience
+          sha256sum openscience-linux-x64.tar.gz > checksums.txt
+
+      - name: Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.version.outputs.tag }}
+          UPSTREAM: ${{ steps.version.outputs.upstream }}
+        run: |
+          gh release create "$TAG" openscience-linux-x64.tar.gz checksums.txt \
+            --target "$GITHUB_SHA" \
+            --title "$TAG" \
+            --notes "Upstream $UPSTREAM with the mtaku3 carry patches at $GITHUB_SHA."

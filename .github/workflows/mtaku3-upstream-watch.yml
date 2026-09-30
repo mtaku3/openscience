@@ -1,0 +1,50 @@
+name: mtaku3 upstream watch
+
+on:
+  schedule:
+    - cron: '0 21 * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Open issue for new upstream release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          git fetch --no-tags https://github.com/synthetic-sciences/openscience.git 'refs/tags/v*:refs/tags/v*'
+          current=$(git describe --tags --abbrev=0 --match 'v*' --exclude '*-mtaku3-*' HEAD)
+          latest=$(gh api repos/synthetic-sciences/openscience/releases/latest --jq .tag_name)
+          echo "current=$current latest=$latest"
+          if [ "$latest" = "$current" ] || git merge-base --is-ancestor "$latest" "$current"; then
+            exit 0
+          fi
+          if [ -n "$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search 'Upstream release in:title' --json number --jq '.[].number')" ]; then
+            exit 0
+          fi
+          gh issue create --repo "$GITHUB_REPOSITORY" --title "Upstream release $latest available" --body "$(cat <<EOF
+          Based on \`$current\`. Review the changes first: https://github.com/synthetic-sciences/openscience/compare/$current...$latest
+
+          \`\`\`sh
+          git fetch --no-tags https://github.com/synthetic-sciences/openscience.git 'refs/tags/v*:refs/tags/v*'
+          git rebase --onto $latest $current
+          bun install --frozen-lockfile
+          bun tooling/repo/generate.ts
+          (cd backend/cli && bun run typecheck && bun test --timeout 15000 test/permission)
+          git push --force-with-lease origin mtaku3
+          \`\`\`
+
+          Close this issue once the build has published the new release, and bump nix-config.
+          EOF
+          )"
